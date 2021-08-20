@@ -2,8 +2,8 @@
   @ Date: 2021-04-13 19:46:51
   @ Author: Qing Shuai
   @ LastEditors: Qing Shuai
-  @ LastEditTime: 2021-06-13 17:56:25
-  @ FilePath: /EasyMocap/apps/demo/mv1p.py
+  @ LastEditTime: 2021-04-14 11:33:00
+  @ FilePath: /EasyMocapRelease/apps/demo/mv1p.py
 '''
 from tqdm import tqdm
 from easymocap.smplmodel import check_keypoints, load_model, select_nf
@@ -12,6 +12,7 @@ from easymocap.pipeline import smpl_from_keypoints3d2d
 import os
 from os.path import join
 import numpy as np
+import shutil
 
 def check_repro_error(keypoints3d, kpts_repro, keypoints2d, P, MAX_REPRO_ERROR):
     square_diff = (keypoints2d[:, :, :2] - kpts_repro[:, :, :2])**2 
@@ -75,21 +76,16 @@ def mv1pmf_smpl(dataset, args, weight_pose=None, weight_shape=None):
         images, annots = dataset[nf]
         param = select_nf(params, nf-start)
         dataset.write_smpl(param, nf)
-        if args.write_smpl_full:
-            param_full = param.copy()
-            param_full['poses'] = body_model.full_poses(param['poses'])
-            dataset.write_smpl(param_full, nf, mode='smpl_full')
-        if args.write_vertices:
-            vertices = body_model(return_verts=True, return_tensor=False, **param)
-            write_data = [{'id': 0, 'vertices': vertices[0]}]
-            dataset.write_vertices(write_data, nf)
         if args.vis_smpl:
             vertices = body_model(return_verts=True, return_tensor=False, **param)
             dataset.vis_smpl(vertices=vertices[0], faces=body_model.faces, images=images, nf=nf, sub_vis=args.sub_vis, add_back=True)
+        full_pose_path = join(args.out, 'smpl', '{:06d}.pkl'.format(nf))
+        shutil.copy('full_pose.pkl', full_pose_path)
         if args.vis_repro:
             keypoints = body_model(return_verts=False, return_tensor=False, **param)[0]
             kpts_repro = projectN3(keypoints, dataset.Pall)
-            dataset.vis_repro(images, kpts_repro, nf=nf, sub_vis=args.sub_vis, mode='repro_smpl')
+            dataset.vis_repro(images, kpts_repro, nf=nf, sub_vis=args.sub_vis)
+        
 
 if __name__ == "__main__":
     from easymocap.mytools import load_parser, parse_parser
